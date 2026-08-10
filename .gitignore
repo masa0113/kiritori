@@ -1,0 +1,4 @@
+.build/
+Kiritori.app/
+.DS_Store
+.claude/settings.local.json
