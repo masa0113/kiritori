@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 撮影直後に画面左下へ出るフローティングパネル(CleanShot 風オーバーレイ)
+/// 撮影直後に画面左下へ出るフローティングパネル
 final class QuickActionController {
     static let shared = QuickActionController()
 
