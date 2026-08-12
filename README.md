@@ -44,6 +44,10 @@ Xcode 不要(Command Line Tools のみでOK)。
 | `Sources/Kiritori/SettingsView.swift` | 設定画面 |
 | `Sources/Kiritori/HotKeyManager.swift` | Carbon グローバルホットキー |
 
+## ライセンス
+
+[MIT License](LICENSE)
+
 ## 今後の拡張候補
 
 - 画面録画(動画 / GIF)— `SCStream` + `AVAssetWriter`
