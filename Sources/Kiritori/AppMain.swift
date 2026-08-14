@@ -82,8 +82,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startCapture(_ kind: CaptureKind) {
         guard !SelectionController.shared.isActive else { return }
-        guard ensureScreenCapturePermission() else { return }
+        Task { @MainActor in
+            guard await CaptureEngine.verifyAccess() else {
+                self.showPermissionAlert()
+                return
+            }
+            self.beginCapture(kind)
+        }
+    }
 
+    private func beginCapture(_ kind: CaptureKind) {
         switch kind {
         case .region:
             SelectionController.shared.begin(mode: .region) { [weak self] result in
@@ -143,15 +151,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - 権限
 
-    private func ensureScreenCapturePermission() -> Bool {
-        if CGPreflightScreenCaptureAccess() { return true }
-        CGRequestScreenCaptureAccess()
-
+    private func showPermissionAlert() {
         let alert = NSAlert()
         alert.messageText = "画面収録の許可が必要です"
         alert.informativeText = """
         システム設定 > プライバシーとセキュリティ > 画面収録とシステムオーディオ録音 で \
-        「Kiritori」を許可して、アプリを再起動してください。
+        「Kiritori」をオンにして、アプリを再起動してください。
+
+        すでにオンなのに撮影できない場合は、一覧で Kiritori を選択して「−」ボタンで削除 \
+        してから、もう一度撮影を試してください(許可のプロンプトが再表示されます)。
         """
         alert.addButton(withTitle: "システム設定を開く")
         alert.addButton(withTitle: "あとで")
@@ -160,7 +168,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
             NSWorkspace.shared.open(url)
         }
-        return false
     }
 
     private func showError(_ error: Error) {

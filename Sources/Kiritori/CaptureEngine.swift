@@ -15,6 +15,18 @@ enum CaptureError: LocalizedError {
 
 enum CaptureEngine {
 
+    /// 実際に ScreenCaptureKit を呼んで画面収録権限を確認する。
+    /// CGPreflightScreenCaptureAccess は新しい macOS で誤って false を返すことが
+    /// あるため使わない。権限が未決定の場合はこの呼び出しが OS の許可プロンプトを出す。
+    static func verifyAccess() async -> Bool {
+        do {
+            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     /// 画面全体(指定スクリーン)
     static func captureDisplay(screen: NSScreen) async throws -> Capture {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
