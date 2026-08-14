@@ -249,6 +249,8 @@ final class EditorModel: ObservableObject {
     @Published var selectedID: UUID?
     @Published var editingTextOrigin: CGPoint?
     @Published var textInput: String = ""
+    /// テキスト編集セッションの識別子。TextField をセッションごとに作り直すために使う
+    @Published var textSessionID = UUID()
 
     private enum DragState { case none, moving, drawing }
     private var dragState: DragState = .none
@@ -364,8 +366,13 @@ final class EditorModel: ObservableObject {
 
         case .none:
             if tool == .text {
-                editingTextOrigin = p
-                textInput = ""
+                if let idx = hitTest(p), shapes[idx].tool == .text {
+                    beginEdit(shapeAt: idx)  // 既存テキストはクリックで再編集
+                } else {
+                    editingTextOrigin = p
+                    textInput = ""
+                    textSessionID = UUID()
+                }
             }
         }
     }
@@ -374,13 +381,18 @@ final class EditorModel: ObservableObject {
 
     /// ダブルクリックで既存テキストを再編集
     func beginEditText(at p: CGPoint) {
-        guard let idx = hitTest(p), shapes[idx].tool == .text else { return }
         commitTextIfNeeded()
+        guard let idx = hitTest(p), shapes[idx].tool == .text else { return }
+        beginEdit(shapeAt: idx)
+    }
+
+    private func beginEdit(shapeAt idx: Int) {
         let shape = shapes.remove(at: idx)
         editingOriginal = shape
         editingOriginalIndex = idx
         editingTextOrigin = shape.start
         textInput = shape.text
+        textSessionID = UUID()
         selectedID = nil
     }
 
@@ -400,7 +412,9 @@ final class EditorModel: ObservableObject {
                 var new = original
                 new.text = trimmed
                 shapes.insert(new, at: index)
-                record(.edit(original, new))
+                if new.text != original.text {
+                    record(.edit(original, new))  // 変更がなければ履歴に積まない
+                }
                 selectedID = new.id
             }
             return
@@ -740,9 +754,11 @@ struct EditorView: View {
                 .position(x: origin.x * fit + 110, y: origin.y * fit + 14)
                 .focused($textFieldFocused)
                 .onSubmit { model.commitTextIfNeeded() }
-                .onAppear { textFieldFocused = true }
-                .onChange(of: model.editingTextOrigin != nil) { _, editing in
-                    textFieldFocused = editing
+                // セッションごとにフィールドを作り直す。フォーカスは同期的に当てると
+                // フィールドエディタの競合でハングすることがあるため必ず非同期で行う
+                .id(model.textSessionID)
+                .onAppear {
+                    DispatchQueue.main.async { textFieldFocused = true }
                 }
         }
     }
