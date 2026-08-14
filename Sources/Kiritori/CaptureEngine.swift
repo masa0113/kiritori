@@ -55,10 +55,23 @@ enum CaptureEngine {
             width: rect.width,
             height: rect.height
         )
+        // 切り出し範囲をピクセル境界に揃える。小数座標のまま渡すと
+        // サンプリング位置がピクセル格子とずれて画像全体が滲む
+        let px = CGRect(
+            x: (local.minX * scale).rounded(),
+            y: (local.minY * scale).rounded(),
+            width: (local.width * scale).rounded(),
+            height: (local.height * scale).rounded()
+        )
         let config = baseConfig()
-        config.sourceRect = local
-        config.width = Int(rect.width * scale)
-        config.height = Int(rect.height * scale)
+        config.sourceRect = CGRect(
+            x: px.minX / scale,
+            y: px.minY / scale,
+            width: px.width / scale,
+            height: px.height / scale
+        )
+        config.width = Int(px.width)
+        config.height = Int(px.height)
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
         return Capture(cgImage: image, scale: scale)
     }
@@ -72,8 +85,8 @@ enum CaptureEngine {
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let scale = CGFloat(filter.pointPixelScale)
         let config = baseConfig()
-        config.width = Int(filter.contentRect.width * scale)
-        config.height = Int(filter.contentRect.height * scale)
+        config.width = Int((filter.contentRect.width * scale).rounded())
+        config.height = Int((filter.contentRect.height * scale).rounded())
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
         return Capture(cgImage: image, scale: scale)
     }
@@ -83,6 +96,7 @@ enum CaptureEngine {
     private static func baseConfig() -> SCStreamConfiguration {
         let config = SCStreamConfiguration()
         config.showsCursor = false
+        config.captureResolution = .best  // 常にネイティブ(Retina)解像度で取得
         return config
     }
 
